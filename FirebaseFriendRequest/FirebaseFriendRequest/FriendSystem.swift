@@ -135,7 +135,7 @@ class FriendSystem {
     
     /** Sends a friend request to the user with the specified id */
     func sendRequestToUser(_ userID: String) {
-        USER_REF.document(userID).collection("requests").document(CURRENT_USER_ID).setValue(true)
+        USER_REF.document(userID).collection("requests").document(CURRENT_USER_ID)
     }
     
     /** Unfriends the user with the specified id */
@@ -213,24 +213,34 @@ class FriendSystem {
     /** Adds a friend observer. The completion function will run every time this list changes, allowing you
      to update your UI. */
     func addFriendObserver(_ update: @escaping () -> Void) {
-        CURRENT_USER_FRIENDS_REF.observe(DataEventType.value, with: { (snapshot) in
+        CURRENT_USER_FRIENDS_REF.addSnapshotListener { documentSnapshot, error in
             self.friendList.removeAll()
-            for child in snapshot.children.allObjects as! [DataSnapshot] {
-                let id = child.key
+            guard let documents = documentSnapshot?.documents else {
+                print("Error fetching documents: \(error!)")
+                return
+            }
+            for document in documents {
+                let id = document.documentID
                 self.getUser(id, completion: { (user) in
                     self.friendList.append(user)
                     update()
                 })
             }
-            // If there are no children, run completion here instead
-            if snapshot.childrenCount == 0 {
+            
+            if documentSnapshot?.count == 0 {
                 update()
             }
-        })
+        }
     }
+    
+    
     /** Removes the friend observer. This should be done when leaving the view that uses the observer. */
     func removeFriendObserver() {
-        CURRENT_USER_FRIENDS_REF.removeAllObservers()
+        let listener = CURRENT_USER_FRIENDS_REF.addSnapshotListener { querySnapshot, error in
+            // ...
+        }
+        // Stop listening to changes
+        listener.remove()
     }
     
     
@@ -241,28 +251,36 @@ class FriendSystem {
     /** Adds a friend request observer. The completion function will run every time this list changes, allowing you
      to update your UI. */
     func addRequestObserver(_ update: @escaping () -> Void) {
-        CURRENT_USER_REQUESTS_REF.observe(DataEventType.value, with: { (snapshot) in
+        CURRENT_USER_REQUESTS_REF.addSnapshotListener { documentSnapshot, error in
             self.requestList.removeAll()
-            for child in snapshot.children.allObjects as! [DataSnapshot] {
-                let id = child.key
+            guard let documents = documentSnapshot?.documents else {
+                print("Error fetching documents: \(error!)")
+                return
+            }
+            for document in documents {
+                let id = document.documentID
                 self.getUser(id, completion: { (user) in
                     self.requestList.append(user)
                     update()
                 })
             }
-            // If there are no children, run completion here instead
-            if snapshot.childrenCount == 0 {
+            
+            if documentSnapshot?.count == 0 {
                 update()
             }
-        })
+        }
     }
+    
     /** Removes the friend request observer. This should be done when leaving the view that uses the observer. */
     func removeRequestObserver() {
-        CURRENT_USER_REQUESTS_REF.remove()
+        let listener = CURRENT_USER_REQUESTS_REF.addSnapshotListener { querySnapshot, error in
+            // ...
+        }
+        // Stop listening to changes
+        listener.remove()
     }
     
 }
-
 
 
 
